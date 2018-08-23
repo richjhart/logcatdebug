@@ -10,10 +10,16 @@ import java.util.Queue;
 @SuppressLint("SetTextI18n")
 @SuppressWarnings({"HardCodedStringLiteral", "SameReturnValue", "unused", "SameParameterValue"})
 public class D {
+
+    public static void init(String version, boolean debug) {
+        DEBUG = (debug || version.contains("alpha"));
+        BETA = (DEBUG || version.contains("beta"));
+    }
+
     public static final DebugTag GENERAL = new DebugTag("general", true, true);
 
-    public static final boolean DEBUG = (BuildConfig.DEBUG || BuildConfig.VERSION_NAME.contains("alpha"));
-    public static final boolean BETA = (DEBUG || BuildConfig.VERSION_NAME.contains("beta"));
+    public static boolean DEBUG = false;
+    public static boolean BETA = false;
 
     private static final String TAG_FORMAT = "%s%s";
     private static final String TAG_HIDDEN = "all_debug_";

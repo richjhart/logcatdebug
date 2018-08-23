@@ -11,6 +11,7 @@ public class MainActivity extends AppCompatActivity {
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
+        D.init(BuildConfig.VERSION_NAME, BuildConfig.DEBUG);
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
         D.log(D.GENERAL, "General comment");
