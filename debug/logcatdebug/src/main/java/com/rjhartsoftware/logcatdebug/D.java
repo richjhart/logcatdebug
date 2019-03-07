@@ -4,6 +4,7 @@ import android.annotation.SuppressLint;
 import android.util.Log;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Locale;
 import java.util.Queue;
 
@@ -11,70 +12,90 @@ import java.util.Queue;
 @SuppressWarnings({"HardCodedStringLiteral", "SameReturnValue", "unused", "SameParameterValue"})
 public class D {
 
+    private static final String TAG_FORMAT = "%s%s";
+    private static final String TAG = "debug_";
+    private static final int D = 0;
+    private static final int W = 1;
+    private static final int E = 2;
+    public static final int SHOW_DEFAULT_LINES = -1;
+    public static final int SHOW_ALL_LINES = -2;
+    private static final int DEFAULT_LINES_AT_START = 4;
+    private static final int DEFAULT_LINE_AT_END = 4;
+
     public static void init(String version, boolean debug) {
         DEBUG = (debug || version.contains("alpha"));
         BETA = (DEBUG || version.contains("beta"));
     }
 
-    public static final DebugTag GENERAL = new DebugTag("general", true, true);
+    public static final DebugTag GENERAL = new DebugTag("general", true);
 
     public static boolean DEBUG = false;
     public static boolean BETA = false;
+    private static int sDefaultStartLines = DEFAULT_LINES_AT_START;
+    private static int sDefaultEndLines = DEFAULT_LINE_AT_END;
 
-    private static final String TAG_FORMAT = "%s%s";
-    private static final String TAG_HIDDEN = "all_debug_";
-    private static final String TAG_SHOWN = "main_debug_";
-    private static final int D = 0;
-    private static final int W = 1;
-    private static final int E = 2;
+    public static void setLines(int lines_at_start, int lines_at_end) {
+        sDefaultStartLines = lines_at_start;
+        sDefaultEndLines = lines_at_end;
+    }
 
-    public static void log(DebugTag tag, String msg) {
+    public static void log(DebugTag tag, String msg, Object... args) {
         if (DEBUG) {
-            log(tag, msg, D, null, 4, 4);
+            internal_log(tag, msg, args, D, null, tag.startLines(), tag.endLines());
         }
     }
 
-    public static void warn(DebugTag tag, String msg) {
+    public static void warn(DebugTag tag, String msg, Object... args) {
         if (DEBUG) {
-            log(tag, msg, W, null, 4, 4);
+            internal_log(tag, msg, args, W, null, tag.startLines(), tag.endLines());
         }
     }
 
-    public static void error(DebugTag tag, String msg) {
+    public static void error(DebugTag tag, String msg, Object... args) {
         if (DEBUG) {
-            log(tag, msg, E, null, 4, 4);
+            internal_log(tag, msg, args, E, null, tag.startLines(), tag.endLines());
         }
     }
 
-    public static void log(DebugTag tag, String msg, Throwable tr) {
+    public static void log(DebugTag tag, String msg, Throwable tr, Object... args) {
         if (DEBUG) {
-            log(tag, msg, D, tr, 4, 4);
+            internal_log(tag, msg, args, D, tr, tag.startLines(), tag.endLines());
         }
     }
 
-    public static void warn(DebugTag tag, String msg, Throwable tr) {
+    public static void warn(DebugTag tag, String msg, Throwable tr, Object... args) {
         if (DEBUG) {
-            log(tag, msg, W, tr, 4, 4);
+            internal_log(tag, msg, args, W, tr, tag.startLines(), tag.endLines());
         }
     }
 
-    public static void error(DebugTag tag, String msg, Throwable tr) {
+    public static void error(DebugTag tag, String msg, Throwable tr, Object... args) {
         if (DEBUG) {
-            log(tag, msg, E, tr, 4, 4);
+            internal_log(tag, msg, args, E, tr, tag.startLines(), tag.endLines());
         }
     }
 
-    private static void log(DebugTag tag, String msg, int level, Throwable tr, int showStart, int showEnd) {
+    private static void internal_log(DebugTag tag, String msg, Object[] args, int level, Throwable tr, int showStart, int showEnd) {
         if (tag.mEnabled) {
+            if (args != null && args.length > 0) {
+                try {
+                    msg = String.format(Locale.US, msg, args);
+                } catch (Exception e) {
+                    error(tag, "Unable to format string, showing raw msg:");
+                }
+            }
+            String orig_lines[] = msg.split("\n");
             Queue<String> lines = new ArrayDeque<>();
-            String remaining = msg;
-            while (!remaining.isEmpty()) {
-                if (remaining.length() > 1000) {
-                    lines.add(remaining.substring(0, 1000));
-                    remaining = remaining.substring(1000);
-                } else {
-                    lines.add(remaining);
-                    remaining = "";
+            for(String orig_line : orig_lines) {
+                String remaining = orig_line;
+                while (!remaining.isEmpty()) {
+                    if (remaining.length() > 1000) {
+                        lines.add(remaining.substring(0, 1000));
+                        remaining = remaining.substring(1000);
+                    } else {
+                        lines.add(remaining);
+                        remaining = "";
+                    }
                 }
             }
             if (showStart < 0) {
@@ -164,25 +185,77 @@ public class D {
     }
 
     public static final class DebugTag {
-        private final boolean mFocus;
         private final String mTag;
-        private final boolean mEnabled;
+        private boolean mEnabled;
         private final int mLevel;
+        private final int mStartLines;
+        private final int mEndLines;
 
+        @Deprecated
         public DebugTag(String tag, boolean enabled, boolean focus) {
-            this(tag, enabled, focus, 0);
+            this(tag, enabled);
         }
 
+        @Deprecated
         public DebugTag(String tag, boolean enabled, boolean focus, int level) {
-            mFocus = focus;
+            this(tag, enabled, level);
+        }
+
+        public DebugTag(String tag) {
+            this(tag, true, 0, SHOW_DEFAULT_LINES, SHOW_DEFAULT_LINES);
+        }
+
+        public DebugTag(String tag, boolean enabled_by_default) {
+            this(tag, enabled_by_default, 0, SHOW_DEFAULT_LINES, SHOW_DEFAULT_LINES);
+        }
+
+        public DebugTag(String tag, boolean enabled_by_default, int caller_level) {
+            this(tag, enabled_by_default, caller_level, SHOW_DEFAULT_LINES, SHOW_DEFAULT_LINES);
+        }
+
+        public DebugTag(String tag, boolean enabled_by_default, int caller_level, int lines_at_start, int lines_at_end) {
             mTag = tag;
-            mEnabled = enabled;
-            mLevel = level;
+            mEnabled = enabled_by_default;
+            mLevel = caller_level;
+            mStartLines = lines_at_start;
+            mEndLines = lines_at_end;
         }
 
         @Override
         public String toString() {
-            return String.format(TAG_FORMAT, (mFocus ? TAG_SHOWN : TAG_HIDDEN), mTag);
+            return String.format(TAG_FORMAT, TAG, mTag);
+        }
+
+        public void enable() {
+            setEnabled(true);
+        }
+
+        public void disable() {
+            setEnabled(false);
+        }
+
+        public void setEnabled(boolean enabled) {
+            mEnabled = enabled;
+        }
+
+        public int startLines() {
+            if (mStartLines == SHOW_DEFAULT_LINES) {
+                return sDefaultStartLines;
+            } else if (mStartLines == SHOW_ALL_LINES) {
+                return SHOW_ALL_LINES;
+            } else {
+                return mStartLines;
+            }
+        }
+
+        public int endLines() {
+            if (mEndLines == SHOW_DEFAULT_LINES) {
+                return sDefaultEndLines;
+            } else if (mStartLines == SHOW_ALL_LINES) {
+                return SHOW_ALL_LINES;
+            } else {
+                return mEndLines;
+            }
         }
     }
 
