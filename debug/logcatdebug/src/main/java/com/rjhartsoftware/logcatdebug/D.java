@@ -84,7 +84,7 @@ public class D {
                     error(tag, "Unable to format string, showing raw msg:");
                 }
             }
-            String orig_lines[] = msg.split("\n");
+            String[] orig_lines = msg.split("\n");
             Queue<String> lines = new ArrayDeque<>();
             for(String orig_line : orig_lines) {
                 String remaining = orig_line;
@@ -104,7 +104,8 @@ public class D {
             if (showEnd < 0) {
                 showEnd = lines.size();
             }
-            String caller = caller(tag.mLevel);
+            String caller = caller(tag.mFileLevel, tag.mCallLevel + tag.mTempLevel);
+            tag.mTempLevel = 0;
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < caller.length(); i++) {
                 sb.append("\u00A0");
@@ -158,22 +159,26 @@ public class D {
         }
     }
 
-    private static String caller(int level) {
+    private static String caller(int fileLevel, int callLevel) {
         Throwable t = new Exception();
         if (t.getStackTrace().length > 0) {
             String this_file = t.getStackTrace()[0].getFileName();
             if (this_file == null) {
                 this_file = "(unknown file): ";
             }
-            int count = 0;
+            int fileCount = 0;
+            int callCount = 0;
             for (StackTraceElement ste : t.getStackTrace()) {
                 if (!this_file.equals(ste.getFileName())) {
-                    count++;
-                    if (count > level) {
-                        return String.format(Locale.US, "(%s:%d).%s(): ", ste.getFileName(), ste.getLineNumber(), ste.getMethodName());
-                    } else {
-                        this_file = ste.getFileName();
-                    }
+                    fileCount++;
+                    callCount = 0;
+                } else {
+                    callCount++;
+                }
+                if (fileCount > fileLevel && callCount == callLevel) {
+                    return String.format(Locale.US, "(%s:%d).%s(): ", ste.getFileName(), ste.getLineNumber(), ste.getMethodName());
+                } else {
+                    this_file = ste.getFileName();
                 }
             }
         }
@@ -187,7 +192,9 @@ public class D {
     public static final class DebugTag {
         private final String mTag;
         private boolean mEnabled;
-        private int mLevel;
+        private int mFileLevel;
+        private int mCallLevel = 0;
+        private int mTempLevel = 0;
         private final int mStartLines;
         private final int mEndLines;
 
@@ -216,7 +223,7 @@ public class D {
         public DebugTag(String tag, boolean enabled_by_default, int caller_level, int lines_at_start, int lines_at_end) {
             mTag = tag;
             mEnabled = enabled_by_default;
-            mLevel = caller_level;
+            mFileLevel = caller_level;
             mStartLines = lines_at_start;
             mEndLines = lines_at_end;
         }
@@ -234,12 +241,17 @@ public class D {
             setEnabled(false);
         }
 
+        public DebugTag indirect() {
+            mTempLevel++;
+            return this;
+        }
+
         public void increaseLevel() {
-            mLevel++;
+            mCallLevel++;
         }
 
         public void decreaseLevel() {
-            mLevel--;
+            mCallLevel--;
         }
 
         public void setEnabled(boolean enabled) {
