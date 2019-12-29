@@ -179,6 +179,9 @@ public class D {
                     return String.format(Locale.US, "(%s:%d).%s(): ", ste.getFileName(), ste.getLineNumber(), ste.getMethodName());
                 } else {
                     this_file = ste.getFileName();
+                    if (this_file == null) {
+                        this_file = "(unknown file): ";
+                    }
                 }
             }
         }
