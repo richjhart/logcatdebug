@@ -187,7 +187,7 @@ public class D {
     public static final class DebugTag {
         private final String mTag;
         private boolean mEnabled;
-        private final int mLevel;
+        private int mLevel;
         private final int mStartLines;
         private final int mEndLines;
 
@@ -232,6 +232,14 @@ public class D {
 
         public void disable() {
             setEnabled(false);
+        }
+
+        public void increaseLevel() {
+            mLevel++;
+        }
+
+        public void decreaseLevel() {
+            mLevel--;
         }
 
         public void setEnabled(boolean enabled) {
