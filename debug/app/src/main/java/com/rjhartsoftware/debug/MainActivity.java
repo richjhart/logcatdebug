@@ -28,5 +28,10 @@ public class MainActivity extends AppCompatActivity {
         D.setLines(D.SHOW_ALL_LINES, D.SHOW_ALL_LINES);
         D.log(TEST, "This is a long message that should now be fully displayed\n2\n3\n4\n5\n6\n7\n8\n9\n10\n11\n12");
         D.log(TEST, "This %s %d %s", "is a formatted message with", 3, "arguments");
+        indirectLog();
+    }
+
+    private void indirectLog() {
+        D.log(TEST.indirect(), "This should state it's in onCreate");
     }
 }
